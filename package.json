@@ -10,6 +10,8 @@
   "license": "ISC",
   "dependencies": {
     "cheerio": "^0.22.0",
-    "phantom": "^3.2.1"
+    "jsdom": "^9.9.1",
+    "phantom": "^3.2.1",
+    "phantom-pool": "^1.1.0"
   }
 }

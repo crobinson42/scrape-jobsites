@@ -1,3 +1,4 @@
+var colors = require('colors');
 const jsdom = require("jsdom")
 const createPhantomPool = require('phantom-pool').default
 const helpers = require('./helpers')
@@ -16,10 +17,14 @@ const pool = createPhantomPool({
 })
 
 let pageVisitCount = 0
+let pageRotateCount = 0
+let pageRotations = 0
 const statusErrors = []
+let file = 'scraped_data.json'
+const fileRotateAfterNumberOfPageVisits = 10
 const stopAfterNErrors = 5
 const pagesToVisit = sites.pagesToVisit
-const addPageToVisit = page => { pagesToVisit.push(page); console.log('page added...');}
+const addPageToVisit = page => { pagesToVisit.push(page); console.log(`- Next page added`.dim);}
 const getPageToVisit = () => pagesToVisit.shift()
 
 async function visitPageAndGetData(url) {
@@ -34,6 +39,21 @@ async function visitPageAndGetData(url) {
       statusErrors.push('Cannot open ' + url + '. Status: ' + status)
     }
 
+    pageVisitCount++
+    pageRotateCount++
+
+    if (fileRotateAfterNumberOfPageVisits < pageRotateCount) {
+
+      // reset rotate count
+      pageRotateCount = 0
+      pageRotations++
+      // rename file to count (remove existing number first)
+      if (file.indexOf('__') > -1) {
+        file = file.substr(file.indexOf('__') + 2)
+      }
+      file = `${pageRotations}__${file}`
+    }
+
     const content = await page.property('content')
     // var document = jsdom.jsdom(content)
 
@@ -42,7 +62,7 @@ async function visitPageAndGetData(url) {
 
     const scrapedDataFromPage = helpers.getDataFromHtml(content, siteParams, url)
 
-    helpers.formatAndSaveScrapedData(scrapedDataFromPage)
+    helpers.formatAndSaveScrapedData(scrapedDataFromPage, file)
 
     let nextUrl = helpers.getNextPageUrl(content, siteParams)
     if (nextUrl) {
@@ -53,7 +73,7 @@ async function visitPageAndGetData(url) {
       addPageToVisit(nextUrl)
     } else {
       console.log(`No next url on page:
-        ${url}`)
+        ${url}`.bgRed)
     }
     // scrape data
     // await page.evaluate(function() {
@@ -66,9 +86,9 @@ async function visitPageAndGetData(url) {
 
 async function scrape() {
   const _url = pagesToVisit.shift()
-  console.log(`Starting visit: ${_url}`);
+  console.log(`Starting visit: ${_url}`.green);
   await visitPageAndGetData(_url)
-  console.log(`Visit done.`);
+  console.log(`Visit ${pageVisitCount} done.`);
 
   if (statusErrors.length >= stopAfterNErrors) {
     console.log('\n')
@@ -78,9 +98,11 @@ async function scrape() {
     closePool()
   }
   else if (pagesToVisit.length) {
+    // we need to wait between page visits so we don't look like a DoS attack
+    helpers.wait() // wait 5 seconds
     scrape()
   } else {
-    console.log('We are done.');
+    console.log('We are done.'.inverse.green.bgOrange);
     closePool()
   }
 }

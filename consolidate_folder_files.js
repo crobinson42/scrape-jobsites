@@ -3,6 +3,7 @@
  * It will read all .json files and consolidate them into the param filename.
  */
 
+var colors = require('colors')
 const program = require('commander');
 const fs = require('fs')
 const path = require('path')
@@ -12,7 +13,7 @@ program
   .option('-f, --filename [data]', 'Filename to consolidate all .json to')
   .parse(process.argv);
 
-const consolidationArrayFromFiles = []
+let consolidationArrayFromFiles = []
 
 fs.readdir(program.dir, (err, files) => {
   if (err && err.code === 'ENOENT') {
@@ -23,22 +24,24 @@ fs.readdir(program.dir, (err, files) => {
   // get only json files
   files = files.filter(f => /.json$/.test(f))
 
-  files.forEach(fileName => {
+  files.forEach((fileName, i) => {
+    console.log(`Reading file ${fileName}`.cyan);
     fileName = path.join(program.dir, fileName)
 
-    const _fileContents = fs.readFileSync(fileName)
+    let _fileContents = fs.readFileSync(fileName)
 
     try {
       consolidationArrayFromFiles = consolidationArrayFromFiles.concat(JSON.parse(_fileContents))
     } catch (e) {
-      console.error(`Failed to concat/JSON.parse from ${fileName}`);
+      console.error(`Failed to concat/JSON.parse from ${fileName}`,e);
       console.log(`current consolidationArrayFromFiles:`,consolidationArrayFromFiles);
     }
   })
 
+  console.log(`Writing consolidated array to file ${program.filename.blue}`.inverse);
   // write to a single file
   try {
-    fs.writeFile(program.filename, JSON.stringify(consolidationArrayFromFiles))
+    fs.writeFileSync(program.filename, JSON.stringify(consolidationArrayFromFiles))
   } catch (e) {
     console.error(`Failed to write consolidationArrayFromFiles to file ${program.filename}`);
     console.log(`current consolidationArrayFromFiles:`,consolidationArrayFromFiles);
